@@ -1,5 +1,6 @@
 package study.developia.transaction.apply;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,10 +12,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 @Slf4j
 @SpringBootTest
-public class InternalCallV1Test {
+public class InternalCallV2Test {
 
     @Autowired
     CallService callService;
+
+    @Autowired
+    InternalService internalService;
 
     @Test
     void printProxy() {
@@ -22,12 +26,7 @@ public class InternalCallV1Test {
     }
 
     @Test
-    void internalCall() {
-        callService.internal();
-    }
-
-    @Test
-    void externalCall() {
+    void externalCallV2() {
         callService.external();
     }
 
@@ -36,26 +35,26 @@ public class InternalCallV1Test {
 
         @Bean
         CallService callService() {
-            return new CallService();
+            return new CallService(internalService());
+        }
+
+        @Bean
+        InternalService internalService() {
+            return new InternalService();
         }
     }
 
 
+    @RequiredArgsConstructor
     @Slf4j
     static class CallService {
+        private final InternalService internalService;
 
         public void external() {
             log.info("call external");
             printTxInfo();
-            internal();
+            internalService.internal();
         }
-
-        @Transactional
-        public void internal() {
-            log.info("call internal");
-            printTxInfo();
-        }
-
 
         private void printTxInfo() {
             boolean txActive = TransactionSynchronizationManager.isActualTransactionActive();
@@ -63,5 +62,22 @@ public class InternalCallV1Test {
             boolean readOnly = TransactionSynchronizationManager.isCurrentTransactionReadOnly();
             log.info("tx readonly={}", readOnly);
         }
+    }
+
+    static class InternalService {
+
+        @Transactional
+        public void internal() {
+            log.info("call internal");
+            printTxInfo();
+        }
+
+        private void printTxInfo() {
+            boolean txActive = TransactionSynchronizationManager.isActualTransactionActive();
+            log.info("tx active={}", txActive);
+            boolean readOnly = TransactionSynchronizationManager.isCurrentTransactionReadOnly();
+            log.info("tx readonly={}", readOnly);
+        }
+
     }
 }
